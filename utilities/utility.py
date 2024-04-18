@@ -1,12 +1,28 @@
+import csv
+import os
 import re
+import sys
+import matplotlib.pyplot as plt
 from prettytable import PrettyTable
-from utilities.constants import CHAR_FREQUENCY_TABLE_TITLE
+from utilities.constants import CHAR_FREQUENCY_TABLE_TITLE, CSV_FILE_DIR, GRAPH_FILE_DIR
 
 
-def print_letter_frequency_table(freq_data: list, title: str):
+def calculate_probabilities(freq_data: list):
+    total_letters = 0
+    for (_, frequency) in freq_data:
+        total_letters += frequency
+
+    # Calculate probabilities for each letter by dividing its frequency by total number of letters
+    probabilities = {letter: (frequency / total_letters) for letter, frequency in freq_data}
+    return probabilities
+
+
+def __print_summary(prob_dict: dict, freq_data: list, title: str):
     """
-    Prints the frequency of each character in a text file
-    and presents them in a table.
+    Prints the frequency and relative frequency (probability)
+    of each character in a text file and presents them in a table.
+
+    In addition, ensures the sum of all relative frequencies == 1.
 
     @param freq_data:
         A list containing the letter frequencies.
@@ -16,21 +32,61 @@ def print_letter_frequency_table(freq_data: list, title: str):
 
     @return: None
     """
+    total_probability = 0
+
+    # Instantiate Table and Define Title/Columns
     table = PrettyTable()
     table.title = CHAR_FREQUENCY_TABLE_TITLE.format(title)
-    table.field_names = ['Character', 'Frequency']
+    table.field_names = ['Character', 'Frequency', "Relative Frequency"]
 
-    for (letter, frequency) in freq_data:
-        table.add_row((letter, frequency))
+    # Fill table with data
+    for ((letter, frequency), probability) in zip(freq_data, prob_dict.values()):
+        table.add_row((letter, frequency, round(probability, 5)))
+        total_probability += probability
 
     print(table)
+    print(f"Sum of Probabilities = {total_probability}")
 
 
-def char_frequency_count(text_file_path: str, title: str):
+def __save_results_to_csv(freq_data: list, file_path: str):
+    """
+    Saves the letter frequency data to a CSV file.
+
+    @param freq_data:
+        A list containing the letter frequencies
+
+    @param file_path:
+        A string representing the path to the text file.
+
+    @return: None
+    """
+    if not os.path.exists(CSV_FILE_DIR):
+        os.makedirs(CSV_FILE_DIR)
+
+    # Create CSV save path that includes file_name.csv
+    file_name = (file_path.split('/')[-1].split('.')[0]) + ".csv"
+    save_directory = os.path.join(CSV_FILE_DIR, file_name)
+
+    # Save results to CSV file
+    try:
+        with open(save_directory, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(['Letter', 'Count'])
+
+            # Add the data in letter, count format
+            for letter, count in freq_data:
+                writer.writerow([letter, count])
+
+        print("[+] CSV FILE CREATED: Results saved to the following path: {}".format(file_path))
+    except IOError:
+        sys.exit("[+] ERROR: An error has occurred while saving frequency results to CSV.")
+
+
+def get_letter_frequency(file_path: str):
     """
     Count the frequency of each character in a text file.
 
-    @param text_file_path:
+    @param file_path:
         A string representing the path to the text file.
 
     @param title:
@@ -39,7 +95,7 @@ def char_frequency_count(text_file_path: str, title: str):
     @return letter_count:
         A sorted list of the frequency of each character in a text file.
     """
-    with (open(text_file_path, 'r')) as file:
+    with (open(file_path, 'r')) as file:
         letter_count = {}
 
         # Read and convert the entire file to lowercase
@@ -56,12 +112,48 @@ def char_frequency_count(text_file_path: str, title: str):
                 letter_count[char] = 1
 
         # Sort the results (from the highest freq to lowest)
-        results = sorted(letter_count.items(), key=lambda item: item[1], reverse=True)
-
-        # Print results in a table
-        print_letter_frequency_table(results, title)
-        return results[0]
+        results = sorted(letter_count.items(), key=lambda item: item[0])
+        return results
 
 
-if __name__ == '__main__':
-    freq = char_frequency_count("../data/moby_dick.txt", "Moby Dick")
+def generate_prob_distribution_graph(prob_dict: dict, file_path: str, title: str):
+    """
+    Generates a graph of the frequency distribution of each character for a given text.
+
+    @param prob_dict:
+        A dictionary containing the relative frequencies/probabilities (value)
+        for each letter (keys)
+
+    @param file_path:
+        A string representing the path to the text file.
+
+    @param title:
+        A string representing the title of the text.
+
+    @return: None
+    """
+    if not os.path.exists(GRAPH_FILE_DIR):
+        os.makedirs(GRAPH_FILE_DIR)
+
+    # Define file name and extension
+    file_name = (file_path.split('/')[-1].split('.')[0]) + "_distribution_graph.png"
+
+    # Generate the graph
+    plt.bar(prob_dict.keys(), prob_dict.values())
+    plt.xlabel('Letters')
+    plt.ylabel('Relative Frequency')
+    plt.title('Relative Distribution of Letters in {}'.format(title))
+
+    # Save graph
+    plt.savefig(os.path.join(GRAPH_FILE_DIR, file_name))
+    print("[+] GRAPH FILE CREATED: The following file has been created {}".format(file_name))
+
+
+def perform_task_1(text_file_path: str, title: str):
+    freq_data = get_letter_frequency(text_file_path)
+    __save_results_to_csv(freq_data, text_file_path)
+
+    probabilities = calculate_probabilities(freq_data)
+    generate_prob_distribution_graph(probabilities, text_file_path, title)
+
+    __print_summary(probabilities, freq_data, title)

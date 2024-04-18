@@ -33,4 +33,4 @@ def parse_arguments():
     if len(title) == 0:
         sys.exit("[+] ERROR: The title of the text was not provided! (-t option)")
 
-    return txt_file_path
+    return txt_file_path, title
