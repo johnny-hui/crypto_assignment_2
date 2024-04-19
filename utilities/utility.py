@@ -325,6 +325,7 @@ def perform_task_1(text_file_path: str, title: str):
 
     @return: None
     """
+    print(f"[+] Task 1 - Getting Letter Frequency Data for {title}")
     freq_data = get_letter_frequency(text_file_path)
     __save_results_to_csv(freq_data, text_file_path)
 
@@ -349,6 +350,9 @@ def perform_task_2(text_file_path: str, title: str, offset: int):
 
     @return: None
     """
+    print(f"[+] Task 2 - Calculating the Conditional Probabilities for Top 6 Frequent Letters "
+          f"Given Cipher Letters in {title}")
+
     if offset is None:
         sys.exit("[+] ERROR: An offset is required for Task 2 which was not provided (-o option)!")
 
